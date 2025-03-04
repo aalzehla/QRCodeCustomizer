@@ -7,16 +7,77 @@ import { ImageUploadField } from './components/ImageUploadField';
 import { CheckboxField } from './components/CheckboxField';
 import ReactJson from 'react-json-view';
 
+function QRPage(props:any) {
+	return (
+		<div>
+			<div>
+				<QRCode key={props.key}
+					{...props.pageInfo} />
+			</div>
+			<div>
+				{props.value}
+			</div>
+		</div>
+	)
+}
+
 const App: React.FC = () => {
 	const [state, setState] = useState<{ [key: string]: any }>({});
+	const [bulkPages, setBulkItems] = useState<any[]>([]);
 	const ref = useRef<QRCode>()
-
+	// const bulkPages:any[] = [];
+	state.bulkFrom = 1;
+	state.bulkTo = 3;
 	const handleChange = ({ target }: any) => {
 		setState(prevState => ({ ...prevState, [target.name]: target.value }))
 	}
 
 	const handleDownload = () => {
 		ref.current?.download()
+	}
+	const goBack = () => {
+		state.isBulk = false;
+		handleChange({target:{isBulk: false}});
+	}
+	const downloadPdf = () => {
+		
+	}
+	const handleBulkGeneration = () => {
+		let data = {...state}
+		if(data && data.bulkFrom) {
+			let from = undefined;
+			let to = undefined;
+			let params:any = {}
+			for (let key of Object.keys(data)) {
+				if(key ==='isBulk') continue;
+			  let value = data[key];
+			  if(value) {
+				  if(key === 'bulkFrom') {
+					  from = parseInt(value.toString())
+				  } else if(key === 'bulkTo') {
+					  to = parseInt(value.toString())
+				  } else {
+					  params[key] = value;
+				  }
+			  }
+			}
+			let items: any[] = []
+			if (from !== undefined && to !== undefined) {
+			  for (let index = from; index <= to; index++) {
+				  let page = {...params};
+				  page.value = index.toString();
+				  if(page && page.value) {
+					items.push(page);
+				  }
+				}
+			}
+			if(items && items.length) {
+				setBulkItems(items)
+			}
+			state.isBulk= true;
+			handleChange({target:{isBulk: true}});
+		}
+		
 	}
 
 	const buildEyeRadiusInput = (id: string) => {
@@ -33,10 +94,46 @@ const App: React.FC = () => {
 
 	return (
 		<div className='app'>
+			{ state.isBulk ? 
+				(
+					<div className='app'>
+						<div id="divToPrint">
+							{bulkPages.map((page:any, i) =>{
+								return <QRPage key={i} pageInfo={page} />;
+							} )}
+						</div> 
+						
+						<div>
+							<button type='button' onClick={goBack}>Go Back</button>
+							<button type='button' onClick={downloadPdf}>Download</button>
+						</div>
+					</div>
+				):
+				(
+				
 			<div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap' }}>
 				<div style={{ display: 'flex', flexDirection: 'column', flexWrap: 'wrap' }}>
 					<div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap' }}>
 						<div style={{ width: '240px', display: 'flex', flexDirection: 'column', padding: '15px' }}>
+							<InputField
+								name='bulkFrom'
+								type='text'
+								handleChange={handleChange}
+								min={100}
+								max={500}
+								defaultValue={1}
+							/>
+							<InputField
+								name='bulkTo'
+								type='text'
+								handleChange={handleChange}
+								min={100}
+								max={500}
+								defaultValue={3}
+							/>
+							<button type='button' onClick={handleBulkGeneration} style={{ margin: '20px' }}>
+								Generate
+							</button>
 							<TextArea
 								name='value'
 								handleChange={handleChange}
@@ -132,6 +229,7 @@ const App: React.FC = () => {
 							/>
 						</div>
 					</div>
+					
 					<div style={{ padding: '15px' }}>
 						<p>eyeRadius</p>
 						<div style={{ display: 'flex', flexDirection: 'row' }}>
@@ -288,8 +386,9 @@ const App: React.FC = () => {
 					<button type='button' onClick={handleDownload} style={{ margin: '20px' }}>
 						Download QR Code
 					</button>
+					<a href='/bulk' target='_blank'>open bulk</a>
 				</div>
-			</div>
+			</div> )}
 			<div style={{ marginLeft: '15px' }}>
 				<p>State snapshot (debug purposes)</p>
 				<ReactJson src={state} style={{ marginBottom: 40 }} />
